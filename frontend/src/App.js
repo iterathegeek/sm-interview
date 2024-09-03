@@ -1,65 +1,122 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Container, Typography, Button, TextField, Card, CardContent, CardActions, Grid } from '@mui/material';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPlus, faEdit, faTrash } from '@fortawesome/free-solid-svg-icons';
 
-function App() {
+// Constants for the base URL
+const baseURL = 'http://localhost:4000/api/issues';
+
+const App = () => {
   const [issues, setIssues] = useState([]);
   const [newIssue, setNewIssue] = useState({ title: '', description: '' });
 
   useEffect(() => {
-    axios.get('http://localhost:4000/api/issues')
-      .then(response => setIssues(response.data))
-      .catch(error => console.error('Error fetching issues:', error));
+    axios.get(baseURL)
+      .then((response) => setIssues(response.data))
+      .catch((error) => console.error('Error fetching issues:', error));
   }, []);
 
-  const handleAddIssue = () => {
-    axios.post('http://localhost:4000/api/issues', newIssue)
-      .then(response => setIssues([...issues, response.data]))
-      .catch(error => console.error('Error adding issue:', error));
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewIssue({ ...newIssue, [name]: value });
   };
 
-  const handleUpdateIssue = (id) => {
-    const updatedIssue = { title: 'Updated Title', description: 'Updated Description' };
-    axios.put(`http://localhost:4000/api/issues/${id}`, updatedIssue)
-      .then(response => setIssues(issues.map(issue => issue.id === id ? response.data : issue)))
-      .catch(error => console.error('Error updating issue:', error));
+  const createIssue = () => {
+    axios.post(baseURL, newIssue)
+      .then(() => {
+        setIssues([...issues, newIssue]);
+        setNewIssue({ title: '', description: '' });
+      })
+      .catch((error) => console.error('Error creating issue:', error));
   };
 
-  const handleDeleteIssue = (id) => {
-    axios.delete(`http://localhost:4000/api/issues/${id}`)
-      .then(() => setIssues(issues.filter(issue => issue.id !== id)))
-      .catch(error => console.error('Error deleting issue:', error));
+  const updateIssue = (id) => {
+    const updatedIssue = issues.find((issue) => issue.id === id);
+    axios.put(`${baseURL}/${id}`, updatedIssue)
+      .then(() => {
+        setIssues(issues.map((issue) => (issue.id === id ? updatedIssue : issue)));
+      })
+      .catch((error) => console.error('Error updating issue:', error));
+  };
+
+  const deleteIssue = (id) => {
+    axios.delete(`${baseURL}/${id}`)
+      .then(() => {
+        setIssues(issues.filter((issue) => issue.id !== id));
+      })
+      .catch((error) => console.error('Error deleting issue:', error));
   };
 
   return (
-    <div className="App">
-      <h1>Issues Tracker</h1>
-      <div>
-        <input
-          type="text"
-          placeholder="Title"
-          value={newIssue.title}
-          onChange={(e) => setNewIssue({ ...newIssue, title: e.target.value })}
-        />
-        <input
-          type="text"
-          placeholder="Description"
-          value={newIssue.description}
-          onChange={(e) => setNewIssue({ ...newIssue, description: e.target.value })}
-        />
-        <button onClick={handleAddIssue}>Add Issue</button>
-      </div>
-      <ul>
-        {issues.map(issue => (
-          <li key={issue.id}>
-            <h3>{issue.title}</h3>
-            <p>{issue.description}</p>
-            <button onClick={() => handleUpdateIssue(issue.id)}>Update</button>
-            <button onClick={() => handleDeleteIssue(issue.id)}>Delete</button>
-          </li>
+    <Container>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Issue Manager
+      </Typography>
+
+      <Card style={{ marginBottom: '20px' }}>
+        <CardContent>
+          <TextField
+            label="Title"
+            name="title"
+            value={newIssue.title}
+            onChange={handleInputChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Description"
+            name="description"
+            value={newIssue.description}
+            onChange={handleInputChange}
+            fullWidth
+            margin="normal"
+          />
+        </CardContent>
+        <CardActions>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={createIssue}
+            startIcon={<FontAwesomeIcon icon={faPlus} />}
+          >
+            Add Issue
+          </Button>
+        </CardActions>
+      </Card>
+
+      <Grid container spacing={2}>
+        {issues.map((issue) => (
+          <Grid item xs={12} key={issue.id}>
+            <Card>
+              <CardContent>
+                <Typography variant="h5">{issue.title}</Typography>
+                <Typography variant="body1">{issue.description}</Typography>
+              </CardContent>
+              <CardActions>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={() => updateIssue(issue.id)}
+                  startIcon={<FontAwesomeIcon icon={faEdit} />}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="contained"
+                  color="error"
+                  onClick={() => deleteIssue(issue.id)}
+                  startIcon={<FontAwesomeIcon icon={faTrash} />}
+                >
+                  Delete
+                </Button>
+              </CardActions>
+            </Card>
+          </Grid>
         ))}
-      </ul>
-    </div>
+      </Grid>
+    </Container>
   );
-}
+};
 
 export default App;

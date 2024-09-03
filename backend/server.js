@@ -1,56 +1,89 @@
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
-app.use(cors());
-app.use(bodyParser.json());
+const PORT = process.env.PORT || 4000;
 
-//  issues array
-let issues = [
-  { id: 1, title: 'Issue 1', description: 'Description of Issue 1' },
-  { id: 2, title: 'Issue 2', description: 'Description of Issue 2' },
-  { id: 3, title: 'Issue 3', description: 'Description of Issue 3' }
-];
+app.use(cors()); // Enable CORS for all routes
+app.use(express.json());
 
-// Create POST
-app.post('/api/issues', (req, res) => {
-  const newIssue = { id: issues.length + 1, ...req.body };
-  issues.push(newIssue);
-  res.status(201).json(newIssue);
-});
-
-// Read  GET all issues
+// Route to read issues from external JSON file
 app.get('/api/issues', (req, res) => {
-  res.json(issues);
+  fs.readFile(path.join(__dirname, 'data/issues.json'), 'utf-8', (err, data) => {
+    if (err) {
+      return res.status(500).json({ error: 'Error reading issues' });
+    }
+    res.json(JSON.parse(data));
+  });
 });
 
-// Update PUT
+// Route to create a new issue
+app.post('/api/issues', (req, res) => {
+  const newIssue = req.body;
+  fs.readFile(path.join(__dirname, 'issues.json'), 'utf-8', (err, data) => {
+    if (err) {
+      return res.status(500).json({ error: 'Error reading issues' });
+    }
+    const issues = JSON.parse(data);
+    issues.push(newIssue);
+    fs.writeFile(path.join(__dirname, 'issues.json'), JSON.stringify(issues, null, 2), (err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Error writing issues' });
+      }
+      res.status(201).json(newIssue);
+    });
+  });
+});
+
+// Route to update an issue
 app.put('/api/issues/:id', (req, res) => {
   const { id } = req.params;
-  const index = issues.findIndex(issue => issue.id == id);
-  if (index !== -1) {
-    issues[index] = { id: parseInt(id), ...req.body };
-    res.json(issues[index]);
-  } else {
-    res.status(404).json({ message: 'Issue not found' });
-  }
+  const updatedIssue = req.body;
+  fs.readFile(path.join(__dirname, 'issues.json'), 'utf-8', (err, data) => {
+    if (err) {
+      return res.status(500).json({ error: 'Error reading issues' });
+    }
+    const issues = JSON.parse(data);
+    const index = issues.findIndex((issue) => issue.id == id);
+    if (index !== -1) {
+      issues[index] = updatedIssue;
+      fs.writeFile(path.join(__dirname, 'issues.json'), JSON.stringify(issues, null, 2), (err) => {
+        if (err) {
+          return res.status(500).json({ error: 'Error writing issues' });
+        }
+        res.status(200).json(updatedIssue);
+      });
+    } else {
+      res.status(404).json({ error: 'Issue not found' });
+    }
+  });
 });
 
-// Delete DELETE
+// Route to delete an issue
 app.delete('/api/issues/:id', (req, res) => {
   const { id } = req.params;
-  const index = issues.findIndex(issue => issue.id == id);
-  if (index !== -1) {
-    issues.splice(index, 1);
-    res.status(204).end();
-  } else {
-    res.status(404).json({ message: 'Issue not found' });
-  }
+  fs.readFile(path.join(__dirname, 'issues.json'), 'utf-8', (err, data) => {
+    if (err) {
+      return res.status(500).json({ error: 'Error reading issues' });
+    }
+    let issues = JSON.parse(data);
+    const index = issues.findIndex((issue) => issue.id == id);
+    if (index !== -1) {
+      const deletedIssue = issues.splice(index, 1);
+      fs.writeFile(path.join(__dirname, 'issues.json'), JSON.stringify(issues, null, 2), (err) => {
+        if (err) {
+          return res.status(500).json({ error: 'Error writing issues' });
+        }
+        res.status(200).json(deletedIssue);
+      });
+    } else {
+      res.status(404).json({ error: 'Issue not found' });
+    }
+  });
 });
 
-// Start the server
-const PORT = 4000;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
